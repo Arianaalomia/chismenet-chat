@@ -4,8 +4,6 @@ Aplicación de chat en tiempo real con salas grupales, mensajes privados, reacci
 
 **Demo en vivo:** [chismenet.onrender.com](https://chismenet.onrender.com/chat.html)
 
-> El servicio está desplegado en el plan gratuito de Render: si nadie lo usa por un rato, "se duerme" y la primera petición puede tardar 30–60 segundos en responder. Además, al no tener almacenamiento persistente, la base de datos se reinicia en cada redeploy.
-
 ---
 
 ## Contenido

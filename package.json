@@ -7,6 +7,9 @@
     "start": "node server.js",
     "dev": "node server.js"
   },
+  "engines": {
+    "node": "20.x"
+  },
   "keywords": ["chat", "socket.io", "realtime", "nodejs"],
   "author": "",
   "license": "ISC",

@@ -1,0 +1,20 @@
+{
+  "name": "chismenet",
+  "version": "1.0.0",
+  "description": "Sistema de chat en tiempo real con Socket.io y SQLite",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["chat", "socket.io", "realtime", "nodejs"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^9.4.3",
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "uuid": "^9.0.0"
+  }
+}

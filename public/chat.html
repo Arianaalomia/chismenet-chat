@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChismeNet</title>
+    <link rel="icon" type="image/png" href="logosl.png" />
+    <link rel="stylesheet" href="style.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  </head>
+  <body class="chat-page">
+
+    <!-- modal crear sala -->
+    <div id="modal-create-room" class="modal-overlay" style="display:none">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>Nueva sala</h3>
+          <button onclick="closeRoomModal()" class="btn-icon">✕</button>
+        </div>
+        <input type="text" id="new-room-name" placeholder="ej: musica, deportes..." maxlength="20"/>
+        <p id="room-error" class="msg error-msg"></p>
+        <div class="modal-actions">
+          <button onclick="closeRoomModal()" class="btn-secondary">Cancelar</button>
+          <button onclick="crearSala()" class="btn-primary-sm">Crear</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- modal confirmar eliminar sala -->
+<div id="modal-confirmar-sala" class="modal-overlay" style="display:none">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Eliminar sala</h3>
+      <button onclick="cerrarModalConfirmarSala()" class="btn-icon">✕</button>
+    </div>
+    <p style="font-size:13.5px;color:var(--text-2)">
+      ¿Seguro que quieres eliminar la sala <strong id="nombre-sala-eliminar"></strong>? Se borrarán todos sus mensajes y no se puede deshacer.
+    </p>
+    <div class="modal-actions">
+      <button onclick="cerrarModalConfirmarSala()" class="btn-secondary">Cancelar</button>
+      <button onclick="confirmarEliminarSala()" class="btn-primary-sm">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+    <!-- modal chat privado -->
+    <div id="modal-nuevo-chat" class="modal-overlay" style="display:none">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>Nuevo chat</h3>
+          <button onclick="cerrarModalNuevoChat()" class="btn-icon">✕</button>
+        </div>
+        <p style="font-size:13px;color:var(--text-3);margin-bottom:4px">Usuarios en línea ahora:</p>
+        <ul id="lista-usuarios-disponibles" class="nav-list users-list" style="max-height:240px"></ul>
+      </div>
+    </div>
+
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <div class="sidebar-logo">
+          <img src="logosl.png" alt="ChismeNet" style="height:36px"/>
+          <span>ChismeNet</span>
+        </div>
+      </div>
+
+      <div class="sidebar-tabs">
+        <button class="sidebar-tab active" id="tab-chats" onclick="cambiarVistaSidebar('chats')">Chats</button>
+        <button class="sidebar-tab" id="tab-salas" onclick="cambiarVistaSidebar('salas')">Salas</button>
+      </div>
+
+      <!-- vista chats privados -->
+      <div id="vista-chats" class="sidebar-section" style="flex:1;overflow-y:auto">
+        <p class="section-label">
+          <span>Conversaciones</span>
+          <button onclick="abrirModalNuevoChat()" class="btn-add-room" title="Nuevo chat">+</button>
+        </p>
+        <ul id="lista-contactos" class="nav-list contactos-list"></ul>
+
+      <p id="sin-chats" class="hint-vacio">Aún no tienes conversaciones. Toca + para empezar una.</p>
+      </div>
+
+      <!-- vista salas grupales -->
+      <div id="vista-salas" class="sidebar-section" style="display:none;flex:1;overflow-y:auto">
+        <p class="section-label">
+          Salas
+          <button onclick="abrirModalSala()" class="btn-add-room" title="Nueva sala">+</button>
+        </p>
+        <ul id="room-list" class="nav-list"></ul>
+
+        <p class="section-label" style="margin-top:16px">
+          En esta sala <span id="user-count" class="count-badge">0</span>
+        </p>
+        <ul id="user-list" class="nav-list users-list"></ul>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="current-user" onclick="abrirModalPerfil()" style="cursor:pointer">
+       <div class="avatar" id="my-avatar"></div>
+       <span id="my-username"></span>
+       <span id="admin-badge" style="display:none" class="admin-tag">Admin</span>
+      </div>
+        <button class="btn-icon" onclick="cerrarSesion()" title="Salir">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <main class="chat-main">
+
+      <div id="pantalla-bienvenida" class="bienvenida">
+        <img src="logosl.png" alt="" style="height:90px;opacity:.5"/>
+        <p>Selecciona un chat o una sala para empezar a conversar</p>
+      </div>
+
+      <!-- chat grupal (sala) -->
+      <div id="vista-chat-grupal" style="display:none;flex-direction:column;overflow:hidden;flex:1">
+          <header class="chat-header">
+          <div class="header-left">
+            <span id="current-room-name" class="room-title"># General</span>
+            <span class="header-divider">—</span>
+            <span id="header-desc" class="header-desc">Sala de conversación general</span>
+          </div>
+          <div class="header-right">
+            <div class="online-badge">
+              <span class="pulse-dot"></span>
+              <span id="header-count">0 en línea</span>
+            </div>
+          </div>
+        </header>
+
+        <div id="messages" class="messages-container"></div>
+
+        <div class="typing-area">
+          <p id="typing-indicator" class="typing-text"></p>
+        </div>
+
+        <div class="input-area">
+          <div class="input-wrapper">
+            <input type="text" id="msg-input" placeholder="Escribe un mensaje..."
+              onkeydown="handleKey(event)" oninput="handleTyping()"
+              autocomplete="off" maxlength="500"/>
+            <button class="btn-send" onclick="enviarMensaje()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+          <p class="input-hint">Presiona <kbd>Enter</kbd> para enviar</p>
+        </div>
+      </div>
+
+      <!-- modal perfil -->
+      <div id="modal-perfil" class="modal-overlay" style="display:none">
+      <div class="modal-card">
+      <div class="modal-header">
+      <h3>Editar perfil</h3>
+      <button onclick="cerrarModalPerfil()" class="btn-icon">✕</button>
+    </div>
+
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+      <div class="avatar" id="preview-avatar-perfil"
+           style="width:72px;height:72px;font-size:24px;cursor:pointer"
+           onclick="document.getElementById('input-avatar').click()"></div>
+      <input type="file" id="input-avatar" accept="image/*" style="display:none" onchange="previsualizarAvatar(event)"/>
+      <span style="font-size:12px;color:var(--text-3)">Toca la foto para cambiarla</span>
+    </div>
+
+    <div class="input-group">
+      <label>Nombre de usuario</label>
+      <input type="text" id="perfil-username" maxlength="20"/>
+    </div>
+
+    <div class="input-group">
+      <label>Nueva contraseña <span class="hint">(opcional)</span></label>
+      <input type="password" id="perfil-password" placeholder="Dejar en blanco para no cambiarla"/>
+    </div>
+
+    <p id="perfil-error" class="msg error-msg"></p>
+
+    <div class="modal-actions">
+      <button onclick="cerrarModalPerfil()" class="btn-secondary">Cancelar</button>
+      <button onclick="guardarPerfil()" class="btn-primary-sm">Guardar</button>
+    </div>
+  </div>
+</div>
+
+      <!-- chat privado -->
+      <div id="vista-chat-privado" style="display:none;flex-direction:column;overflow:hidden;flex:1">
+        <header class="chat-header">
+          <div class="header-left" style="gap:12px">
+            <div class="avatar" id="avatar-chat-privado" style="width:38px;height:38px;font-size:14px"></div>
+            <div style="display:flex;flex-direction:column">
+              <span id="nombre-chat-privado" class="room-title"></span>
+              <span id="estado-chat-privado" class="header-desc" style="font-size:11.5px"></span>
+            </div>
+          </div>
+        </header>
+
+        <div id="mensajes-privados" class="messages-container"></div>
+
+        <div class="typing-area">
+          <p id="typing-privado-indicator" class="typing-text"></p>
+        </div>
+
+        <div class="input-area">
+          <div class="input-wrapper">
+            <input type="text" id="input-privado" placeholder="Escribe un mensaje..."
+              onkeydown="handleKeyPrivado(event)" oninput="handleTypingPrivado()"
+              autocomplete="off" maxlength="500"/>
+            <button class="btn-send" onclick="enviarPrivadoNuevo()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const user = localStorage.getItem("chat_user");
+      const esAdmin = localStorage.getItem("chat_admin") === "1";
+      if (!user) window.location.href = "/";
+
+      let salaActual    = "general";
+      let chatPrivCon   = null;        
+      let timerTyping;
+      let timerTypingPriv;
+      const socket = io();
+      const EMOJIS = ["👍","❤️","😂","😮","😢","🔥"];
+
+      document.getElementById("my-username").textContent = user;
+      document.getElementById("my-avatar").textContent   = user.charAt(0).toUpperCase();
+      if (esAdmin) document.getElementById("admin-badge").style.display = "inline";
+      let miAvatarActual = null;
+
+fetch(`/profile/${user}`)
+  .then(r => r.json())
+  .then(p => { miAvatarActual = p.avatar || null; aplicarAvatarPropio(); })
+  .catch(() => {});
+
+function aplicarAvatarPropio() {
+  const el = document.getElementById("my-avatar");
+  if (miAvatarActual) {
+    el.style.backgroundImage = `url(${miAvatarActual})`;
+    el.style.backgroundSize = "cover";
+    el.style.backgroundPosition = "center";
+    el.textContent = "";
+  } else {
+    el.style.backgroundImage = "";
+    el.textContent = user.charAt(0).toUpperCase();
+  }
+}
+
+let avatarBase64Pendiente = null;
+
+function abrirModalPerfil() {
+  document.getElementById("perfil-username").value = user;
+  document.getElementById("perfil-password").value = "";
+  document.getElementById("perfil-error").textContent = "";
+  avatarBase64Pendiente = miAvatarActual;
+  actualizarPreviewAvatar();
+  document.getElementById("modal-perfil").style.display = "flex";
+}
+
+function cerrarModalPerfil() {
+  document.getElementById("modal-perfil").style.display = "none";
+}
+
+function previsualizarAvatar(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 1.5 * 1024 * 1024) {
+    document.getElementById("perfil-error").textContent = "La imagen debe pesar menos de 1.5MB";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    avatarBase64Pendiente = reader.result;
+    actualizarPreviewAvatar();
+  };
+  reader.readAsDataURL(file);
+}
+
+function actualizarPreviewAvatar() {
+  const el = document.getElementById("preview-avatar-perfil");
+  if (avatarBase64Pendiente) {
+    el.style.backgroundImage = `url(${avatarBase64Pendiente})`;
+    el.style.backgroundSize = "cover";
+    el.style.backgroundPosition = "center";
+    el.textContent = "";
+  } else {
+    el.style.backgroundImage = "";
+    el.textContent = user.charAt(0).toUpperCase();
+  }
+}
+
+async function guardarPerfil() {
+  const nuevoUsername = document.getElementById("perfil-username").value.trim();
+  const nuevaPassword = document.getElementById("perfil-password").value;
+  const errorEl = document.getElementById("perfil-error");
+  errorEl.textContent = "";
+
+  if (!nuevoUsername) {
+    errorEl.textContent = "El nombre de usuario no puede estar vacío";
+    return;
+  }
+
+  const patronUsuario = /^[a-zA-Z0-9_.]{3,20}$/;
+  if (!patronUsuario.test(nuevoUsername)) {
+  errorEl.textContent = "Usuario: 3-20 caracteres, solo letras, números, '.' y '_'";
+  return;
+  }
+
+  try {
+    const resp = await fetch(`/profile/${user}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        newUsername: nuevoUsername,
+        newPassword: nuevaPassword || undefined,
+        avatar: avatarBase64Pendiente
+      })
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      errorEl.textContent = data.error || "No se pudo actualizar el perfil";
+      return;
+    }
+
+    localStorage.setItem("chat_user", data.username);
+    location.reload();
+  } catch (e) {
+    errorEl.textContent = "Error de conexión con el servidor";
+  }
+}
+
+      function cambiarVistaSidebar(cual) {
+        document.getElementById("tab-chats").classList.toggle("active", cual === "chats");
+        document.getElementById("tab-salas").classList.toggle("active", cual === "salas");
+        document.getElementById("vista-chats").style.display = cual === "chats" ? "flex" : "none";
+        document.getElementById("vista-salas").style.display = cual === "salas" ? "flex" : "none";
+      }
+
+      // Lista de contactos / conversaciones privadas
+
+      function cargarContactos() {
+        fetch("/contactos/" + user)
+          .then(r => r.json())
+          .then(lista => renderContactos(lista))
+          .catch(e => console.warn("no se pudo cargar contactos", e));
+      }
+      cargarContactos();
+
+      function renderContactos(lista) {
+        const ul = document.getElementById("lista-contactos");
+        const vacio = document.getElementById("sin-chats");
+
+        if (lista.length === 0) {
+          ul.innerHTML = "";
+          vacio.style.display = "block";
+          return;
+        }
+        vacio.style.display = "none";
+
+        ul.innerHTML = lista.map(c => {
+          const prefijo = c.esMio ? "Tú: " : "";
+          const checks  = c.esMio ? renderCheckEstado(c.leido) : "";
+          return `
+            <li class="nav-item contacto-item ${chatPrivCon === c.username ? "active" : ""}"
+                onclick="abrirMP('${c.username}')">
+              ${c.avatar
+              ? `<div class="user-avatar-sm" style="width:38px;height:38px;font-size:14px;background-image:url('${c.avatar}');background-size:cover;background-position:center"></div>`
+              : `<div class="user-avatar-sm" style="width:38px;height:38px;font-size:14px">${c.username.charAt(0).toUpperCase()}</div>`}              <div style="flex:1;overflow:hidden">
+                <div style="display:flex;justify-content:space-between">
+                  <span style="font-weight:600">${c.username}</span>
+                  <span style="font-size:11px;color:var(--text-3)">${c.hora}</span>
+                </div>
+                <div style="font-size:12.5px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                  ${checks}${prefijo}${c.ultimoMensaje}
+                </div>
+              </div>
+              ${c.enLinea ? '<span class="dot-online"></span>' : ""}
+            </li>`;
+        }).join("");
+      }
+
+      function renderCheckEstado(leido) {
+        const color = leido ? "#34b7f1" : "#999";
+        return `<svg width="14" height="10" viewBox="0 0 16 11" style="vertical-align:middle;margin-right:3px">
+          <path d="M1 5l3 3L11 1" stroke="${color}" stroke-width="1.5" fill="none"/>
+          <path d="M5 5l3 3L15 1" stroke="${color}" stroke-width="1.5" fill="none"/>
+        </svg>`;
+      }
+
+      // Iniciar chat nuevo
+      function abrirModalNuevoChat() {
+        document.getElementById("modal-nuevo-chat").style.display = "flex";
+        socket.emit("pedir_usuarios_online");
+      }
+      function cerrarModalNuevoChat() {
+        document.getElementById("modal-nuevo-chat").style.display = "none";
+      }
+
+      socket.on("usuarios_online_lista", (usuarios) => {
+  const ul = document.getElementById("lista-usuarios-disponibles");
+  const otros = usuarios.filter(u => u.username !== user);
+  if (otros.length === 0) {
+    ul.innerHTML = '<li style="padding:10px;color:var(--text-3);font-size:13px">No hay nadie más conectado ahora</li>';
+    return;
+  }
+  ul.innerHTML = otros.map(u => `
+    <li class="nav-item user-item" onclick="cerrarModalNuevoChat(); abrirMP('${u.username}')">
+      ${u.avatar
+        ? `<div class="user-avatar-sm" style="background-image:url('${u.avatar}');background-size:cover;background-position:center"></div>`
+        : `<div class="user-avatar-sm">${u.username.charAt(0).toUpperCase()}</div>`}
+      <span>${u.username}</span>
+      <span class="dot-online"></span>
+    </li>`).join("");
+});
+
+      // Abrir chat privado
+      function abrirMP(otro) {
+  chatPrivCon = otro;
+
+  document.getElementById("pantalla-bienvenida").style.display = "none";
+  document.getElementById("vista-chat-grupal").style.display   = "none";
+  document.getElementById("vista-chat-privado").style.display  = "flex";
+
+  const avatarEl = document.getElementById("avatar-chat-privado");
+  avatarEl.style.backgroundImage = "";
+  avatarEl.textContent = otro.charAt(0).toUpperCase();
+  fetch(`/profile/${otro}`).then(r => r.json()).then(p => {
+    if (p.avatar) {
+      avatarEl.style.backgroundImage = `url('${p.avatar}')`;
+      avatarEl.style.backgroundSize = "cover";
+      avatarEl.style.backgroundPosition = "center";
+      avatarEl.textContent = "";
+    }
+  }).catch(() => {});
+
+  document.getElementById("nombre-chat-privado").textContent = otro;
+  document.getElementById("mensajes-privados").innerHTML = "";
+
+  socket.emit("get_private_history", { user1: user, user2: otro });
+  socket.emit("marcar_leido", { yo: user, otro });
+
+  document.getElementById("input-privado").focus();
+  cargarContactos(); 
+}
+
+      // Mensajes privados
+      function handleKeyPrivado(e) { if (e.key === "Enter") enviarPrivadoNuevo(); }
+
+      function enviarPrivadoNuevo() {
+        const inp = document.getElementById("input-privado");
+        const txt = inp.value.trim();
+        if (!txt || !chatPrivCon) return;
+        socket.emit("send_private", { from: user, to: chatPrivCon, message: txt });
+        socket.emit("stop_typing_privado", { to: chatPrivCon });
+        inp.value = "";
+        clearTimeout(timerTypingPriv);
+      }
+
+      function handleTypingPrivado() {
+        if (!chatPrivCon) return;
+        socket.emit("typing_privado", { from: user, to: chatPrivCon });
+        clearTimeout(timerTypingPriv);
+        timerTypingPriv = setTimeout(() => {
+          socket.emit("stop_typing_privado", { to: chatPrivCon });
+        }, 1500);
+      }
+
+      function agregarMensajePrivado(data) {
+        const caja = document.getElementById("mensajes-privados");
+        const esPropio = data.username === user;
+        const div = document.createElement("div");
+        div.className = `message ${esPropio ? "own" : "other"}`;
+        div.setAttribute("data-msgid", data.id);
+
+        const checks = esPropio ? renderCheckMensaje(data.status || "enviado") : "";
+        const reaccHtml = renderReacciones(data.reactions || [], data.id);
+
+        div.innerHTML = `
+          <div class="msg-content">
+            <div class="msg-bubble"
+              onmouseenter="mostrarEmojis('${data.id}')"
+              onmouseleave="ocultarEmojis('${data.id}')">
+              ${sanitizar(data.message)}
+              <div class="emoji-bar" id="emoji-bar-${data.id}" style="display:none">
+                ${EMOJIS.map(e => `<button onclick="reaccionarPrivado('${data.id}','${e}')">${e}</button>`).join("")}
+              </div>
+            </div>
+            <div class="reactions-row" id="reactions-${data.id}">${reaccHtml}</div>
+            <span class="msg-time">${checks}${data.timestamp}</span>
+          </div>`;
+        caja.appendChild(div);
+        caja.scrollTop = caja.scrollHeight;
+      }
+
+      function reaccionarPrivado(msgId, emoji) {
+        socket.emit("react_privado", { messageId: msgId, username: user, emoji, otroUsuario: chatPrivCon });
+      }
+
+
+      function renderCheckMensaje(estado) {
+        if (estado === "enviado")   return "✓ ";
+        if (estado === "entregado") return '<span style="color:#999">✓✓</span> ';
+        if (estado === "leido")     return '<span style="color:#34b7f1">✓✓</span> ';
+        return "";
+      }
+
+      // salas grupales
+      function cargarSalas() {
+        fetch("/rooms")
+          .then(r => r.json())
+          .then(salas => {
+            renderSalas(salas);
+            if (!document.body.dataset.joined) {
+              socket.emit("join", { username: user, room: salaActual });
+              document.body.dataset.joined = "1";
+            }
+          })
+          .catch(err => console.warn("error cargando salas", err));
+      }
+      cargarSalas();
+
+      function renderSalas(salas) {
+        const ul = document.getElementById("room-list");
+        ul.innerHTML = salas.map(s => {
+          const activa = s.id === salaActual ? "active" : "";
+          const btnDel = (esAdmin && !s.is_default)
+            ? `<button class="btn-del-room" onclick="event.stopPropagation();eliminarSala('${s.id}')" title="Borrar">✕</button>`
+            : "";
+          return `
+            <li class="nav-item room-item ${activa}" id="room-item-${s.id}"
+                onclick="cambiarSala('${s.id}','${s.name}')">
+              <span class="room-icon">${s.icon}</span>
+              <span>${s.name}</span>
+              ${btnDel}
+            </li>`;
+        }).join("");
+      }
+
+      function cambiarSala(id, nombre) {
+        document.getElementById("pantalla-bienvenida").style.display = "none";
+        document.getElementById("vista-chat-privado").style.display  = "none";
+        document.getElementById("vista-chat-grupal").style.display   = "flex";
+
+        if (id === salaActual) return;
+        document.querySelectorAll(".room-item").forEach(el => el.classList.remove("active"));
+        const item = document.getElementById("room-item-" + id);
+        if (item) item.classList.add("active");
+        salaActual = id;
+        document.getElementById("current-room-name").textContent = nombre;
+        document.getElementById("header-desc").textContent = "";
+        document.getElementById("messages").innerHTML = "";
+        document.getElementById("typing-indicator").textContent = "";
+        socket.emit("change_room", { username: user, newRoom: id });
+      }
+
+      function abrirModalSala() {
+        document.getElementById("modal-create-room").style.display = "flex";
+        document.getElementById("new-room-name").focus();
+      }
+      function closeRoomModal() {
+        document.getElementById("modal-create-room").style.display = "none";
+        document.getElementById("new-room-name").value = "";
+        document.getElementById("room-error").textContent = "";
+      }
+      function crearSala() {
+        const nombre = document.getElementById("new-room-name").value.trim();
+        if (!nombre) return;
+        document.getElementById("room-error").textContent = "";
+        socket.emit("create_room", { username: user, roomName: nombre });
+      }
+      let salaPendienteEliminar = null;
+
+function eliminarSala(id) {
+  salaPendienteEliminar = id;
+  const item = document.getElementById("room-item-" + id);
+  const nombre = item ? item.querySelector("span:nth-child(2)").textContent : id;
+  document.getElementById("nombre-sala-eliminar").textContent = nombre;
+  document.getElementById("modal-confirmar-sala").style.display = "flex";
+}
+
+function cerrarModalConfirmarSala() {
+  document.getElementById("modal-confirmar-sala").style.display = "none";
+  salaPendienteEliminar = null;
+}
+
+async function confirmarEliminarSala() {
+  if (!salaPendienteEliminar) return;
+  await fetch(`/admin/rooms/${salaPendienteEliminar}`, { method: "DELETE", headers: { "x-admin-user": user } });
+  cerrarModalConfirmarSala();
+}
+
+      socket.on("room_created", () => { closeRoomModal(); setTimeout(() => cargarSalas(), 300); });
+      socket.on("room_error",   msg => { document.getElementById("room-error").textContent = msg; });
+      socket.on("room_deleted", id  => { if (salaActual === id) cambiarSala("general", "# General"); cargarSalas(); });
+
+      function handleKey(e) { if (e.key === "Enter") enviarMensaje(); }
+
+      function enviarMensaje() {
+        const inp = document.getElementById("msg-input");
+        const txt = inp.value.trim();
+        if (!txt) return;
+        socket.emit("send_message", { username: user, message: txt, room: salaActual });
+        socket.emit("stop_typing", { room: salaActual });
+        inp.value = "";
+        clearTimeout(timerTyping);
+      }
+
+      function handleTyping() {
+        socket.emit("typing", { username: user, room: salaActual });
+        clearTimeout(timerTyping);
+        timerTyping = setTimeout(() => socket.emit("stop_typing", { room: salaActual }), 1500);
+      }
+
+      function agregarMensaje(data, esHistorial = false) {
+        const caja = document.getElementById("messages");
+        const esPropio = data.username === user;
+        const div = document.createElement("div");
+        div.className = `message ${esPropio ? "own" : "other"} ${esHistorial ? "history" : "new"}`;
+        div.setAttribute("data-id", data.id);
+
+        const reaccHtml = renderReacciones(data.reactions || [], data.id);
+
+        div.innerHTML = `
+        ${!esPropio
+        ? (data.avatar
+        ? `<div class="msg-avatar" style="background-image:url('${data.avatar}');background-size:cover;background-position:center"></div>`
+        : `<div class="msg-avatar">${data.username.charAt(0).toUpperCase()}</div>`)
+            : ""}
+            <div class="msg-content">
+            ${!esPropio ? `<span class="msg-author">${sanitizar(data.username)}</span>` : ""}
+            <div class="msg-bubble"
+              onmouseenter="mostrarEmojis('${data.id}')"
+              onmouseleave="ocultarEmojis('${data.id}')">
+              ${sanitizar(data.message)}
+              <div class="emoji-bar" id="emoji-bar-${data.id}" style="display:none">
+                ${EMOJIS.map(e => `<button onclick="reaccionar('${data.id}','${e}')">${e}</button>`).join("")}
+              </div>
+            </div>
+            <div class="reactions-row" id="reactions-${data.id}">${reaccHtml}</div>
+            <span class="msg-time">${data.timestamp}</span>
+          </div>`;
+
+        caja.appendChild(div);
+        caja.scrollTop = caja.scrollHeight;
+      }
+
+      function renderReacciones(reacciones, msgId) {
+        return reacciones.map(r => {
+          const lista     = r.users ? r.users.split(",") : [];
+          const reaccioné = lista.includes(user);
+          return `<button class="reaction-btn ${reaccioné ? "reacted" : ""}"
+            onclick="reaccionar('${msgId}','${r.emoji}')">${r.emoji} ${r.count}</button>`;
+        }).join("");
+      }
+
+      function mostrarEmojis(id) { const b = document.getElementById("emoji-bar-" + id); if (b) b.style.display = "flex"; }
+      function ocultarEmojis(id) { const b = document.getElementById("emoji-bar-" + id); if (b) b.style.display = "none"; }
+      function reaccionar(msgId, emoji) { socket.emit("react", { messageId: msgId, username: user, emoji, room: salaActual }); }
+
+      function agregarSistema(msg) {
+        const caja = document.getElementById("messages");
+        const div  = document.createElement("div");
+        div.className = "system-msg";
+        div.innerHTML = `<span>${msg}</span>`;
+        caja.appendChild(div);
+        caja.scrollTop = caja.scrollHeight;
+      }
+
+      // Eventos socket
+      socket.on("message_history", msgs => {
+        const caja = document.getElementById("messages");
+        caja.innerHTML = "";
+        if (msgs.length > 0) {
+          agregarSistema("— Historial —");
+          msgs.forEach(m => agregarMensaje(m, true));
+          agregarSistema("— Nuevos mensajes —");
+        }
+      });
+
+      socket.on("receive_message", data => agregarMensaje(data, false));
+      socket.on("system_message",  msg  => agregarSistema(msg));
+
+      socket.on("reaction_update", ({ messageId, reactions }) => {
+        const fila = document.getElementById("reactions-" + messageId);
+        if (fila) fila.innerHTML = renderReacciones(reactions, messageId);
+      });
+
+      socket.on("reaction_update_privado", ({ messageId, reactions }) => {
+        const fila = document.getElementById("reactions-" + messageId);
+        if (fila) fila.innerHTML = renderReacciones(reactions, messageId);
+      });
+
+      socket.on("user_list", usuarios => {
+  const ul = document.getElementById("user-list");
+  const n  = usuarios.length;
+  document.getElementById("user-count").textContent  = n;
+  document.getElementById("header-count").textContent = n + " en línea";
+
+  ul.innerHTML = usuarios.map(u => {
+    const soyYo = u.username === user;
+    return `
+      <li class="nav-item user-item ${soyYo ? "me" : ""}"
+          onclick="${!soyYo ? `abrirMP('${u.username}')` : ""}">
+        ${u.avatar
+          ? `<div class="user-avatar-sm" style="background-image:url('${u.avatar}');background-size:cover;background-position:center"></div>`
+          : `<div class="user-avatar-sm">${u.username.charAt(0).toUpperCase()}</div>`}
+        <span>${u.username}${soyYo ? " (tú)" : ""}</span>
+        ${!soyYo ? '<span class="pm-hint">MP</span>' : ""}
+        <span class="dot-online"></span>
+      </li>`;
+  }).join("");
+});
+
+      socket.on("user_typing", u  => { document.getElementById("typing-indicator").textContent = `${u} está escribiendo...`; });
+      socket.on("user_stop_typing", () => { document.getElementById("typing-indicator").textContent = ""; });
+
+      socket.on("user_typing_privado", u => {
+        if (u === chatPrivCon) document.getElementById("typing-privado-indicator").textContent = "escribiendo...";
+      });
+      socket.on("user_stop_typing_privado", () => {
+        document.getElementById("typing-privado-indicator").textContent = "";
+      });
+
+      socket.on("private_history", ({ withUser, messages }) => {
+        if (withUser !== chatPrivCon) return;
+        const caja = document.getElementById("mensajes-privados");
+        caja.innerHTML = "";
+        messages.forEach(m => agregarMensajePrivado(m));
+      });
+
+      socket.on("receive_private", data => {
+        const involucrado = chatPrivCon === data.username || chatPrivCon === data.to_user;
+        if (involucrado) {
+          agregarMensajePrivado(data);
+          if (data.username !== user) socket.emit("marcar_leido", { yo: user, otro: data.username });
+        } else if (data.username !== user) {
+          mostrarToast(`💬 Mensaje de ${data.username}`);
+        }
+        cargarContactos();
+      });
+
+      socket.on("private_status", ({ messageId, status }) => {
+        const el = document.querySelector(`[data-msgid="${messageId}"] .msg-time`);
+        if (el) el.innerHTML = renderCheckMensaje(status) + el.textContent.replace(/^[✓\s]+/, "");
+        cargarContactos();
+      });
+
+      socket.on("mensajes_leidos", ({ por }) => {
+        if (por === chatPrivCon) {
+          document.querySelectorAll("#mensajes-privados .message.own .msg-time").forEach(el => {
+            const texto = el.textContent.replace(/^[✓\s]+/, "");
+            el.innerHTML = renderCheckMensaje("leido") + texto;
+          });
+        }
+        cargarContactos();
+      });
+
+      socket.on("contacto_estado", () => cargarContactos());
+
+      // Utilidades
+
+      function mostrarToast(msg) {
+        const n = document.createElement("div");
+        n.className = "toast-notif";
+        n.textContent = msg;
+        document.body.appendChild(n);
+        setTimeout(() => n.remove(), 3500);
+      }
+
+      function cerrarSesion() {
+        localStorage.clear();
+        window.location.href = "/";
+      }
+
+      function sanitizar(txt) {
+        return txt
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+    </script>
+  </body>
+</html>

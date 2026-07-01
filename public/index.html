@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChismeNet</title>
+    <link rel="icon" type="image/png" href="logo.png" />
+    <link rel="stylesheet" href="style.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  </head>
+  <body class="auth-page">
+    <div class="auth-bg">
+      <div class="bg-circle c1"></div>
+      <div class="bg-circle c2"></div>
+      <div class="bg-circle c3"></div>
+    </div>
+
+    <div class="auth-card">
+      <div class="logo" style="justify-content:center;">
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <img src="logo.png" alt="ChismeNet" style="height:180px;" />
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" id="tab-login" onclick="cambiarTab('login')">Iniciar sesión</button>
+        <button class="tab" id="tab-register" onclick="cambiarTab('register')">Crear cuenta</button>
+        <button class="tab" id="tab-admin" onclick="cambiarTab('admin')">Admin</button>
+      </div>
+
+      <!-- login -->
+      <div id="login-form" class="form-section">
+        <div class="input-group">
+          <label>Usuario</label>
+          <input type="text" id="login-user" placeholder="Ingresa tu usuario"
+            onkeydown="if(event.key==='Enter') entrar()"/>
+        </div>
+        <div class="input-group">
+          <label>Contraseña</label>
+          <input type="password" id="login-pass" placeholder="Tu contraseña"
+            onkeydown="if(event.key==='Enter') entrar()"/>
+        </div>
+        <p id="login-error" class="msg error-msg"></p>
+        <button class="btn-primary" onclick="entrar()" id="btn-login">
+          <span>Entrar al chat</span>
+        </button>
+      </div>
+
+      <!-- registro -->
+      <div id="register-form" class="form-section" style="display:none">
+        <div class="input-group">
+          <label>Usuario <span class="hint">(3–20 caracteres)</span></label>
+          <input type="text" id="reg-user" placeholder="Elige tu nombre de usuario"/>
+        </div>
+        <div class="input-group">
+          <label>Contraseña <span class="hint">(mínimo 4 caracteres)</span></label>
+          <input type="password" id="reg-pass" placeholder="Crea una contraseña"/>
+        </div>
+        <div class="input-group">
+          <label>Confirmar contraseña</label>
+          <input type="password" id="reg-pass2" placeholder="Repite la contraseña"
+            onkeydown="if(event.key==='Enter') registrarse()"/>
+        </div>
+        <p id="reg-error" class="msg error-msg"></p>
+        <p id="reg-ok"    class="msg success-msg"></p>
+        <button class="btn-primary" onclick="registrarse()" id="btn-register">
+          <span>Crear cuenta</span>
+        </button>
+      </div>
+
+      <!-- acceso admin -->
+      <div id="admin-form" class="form-section" style="display:none">
+        <div class="admin-access-info">
+          Solo administradores autorizados pueden entrar aquí.
+        </div>
+        <div class="input-group">
+          <label>Usuario</label>
+          <input type="text" id="admin-user" placeholder="Tu usuario admin"/>
+        </div>
+        <div class="input-group">
+          <label>Contraseña</label>
+          <input type="password" id="admin-pass" placeholder="Tu contraseña"
+            onkeydown="if(event.key==='Enter') entrarAdmin()"/>
+        </div>
+        <div class="input-group">
+          <label>Clave secreta</label>
+          <input type="password" id="admin-secret" placeholder="Clave de administrador"
+            onkeydown="if(event.key==='Enter') entrarAdmin()"/>
+        </div>
+        <p id="admin-error" class="msg error-msg"></p>
+        <button class="btn-primary" onclick="entrarAdmin()" id="btn-admin">
+          <span>Acceder</span>
+        </button>
+        <p style="text-align:center;font-size:11.5px;margin-top:4px">
+          <a href="#" onclick="mostrarSetupAdmin();return false" style="color:var(--naranja-mid)">¿Aún no hay administrador? Configúralo aquí</a>
+        </p>
+      </div>
+
+      <!-- configurar el primer admin del sistema, solo funciona una vez -->
+      <div id="setup-admin-form" class="form-section" style="display:none">
+        <div class="admin-access-info">
+          Esto solo funciona si todavía no existe ningún administrador en el sistema.
+        </div>
+        <div class="input-group">
+          <label>Tu usuario (ya debe estar registrado)</label>
+          <input type="text" id="setup-user" placeholder="Tu nombre de usuario"/>
+        </div>
+        <div class="input-group">
+          <label>Clave secreta</label>
+          <input type="password" id="setup-secret" placeholder="Clave de administrador"
+            onkeydown="if(event.key==='Enter') configurarPrimerAdmin()"/>
+        </div>
+        <p id="setup-error" class="msg error-msg"></p>
+        <p id="setup-ok" class="msg success-msg"></p>
+        <button class="btn-primary" onclick="configurarPrimerAdmin()">
+          <span>Hacerme administrador</span>
+        </button>
+        <p style="text-align:center;font-size:11.5px">
+          <a href="#" onclick="ocultarSetupAdmin();return false" style="color:var(--naranja-mid)">Volver</a>
+        </p>
+      </div>
+    </div>
+
+    <script>
+      
+      const FORMS = ["login-form", "register-form", "admin-form"];
+      const TABS = ["login", "register", "admin"];
+
+      function cambiarTab(cual) {
+        TABS.forEach(t => document.getElementById("tab-" + t).classList.remove("active"));
+        document.getElementById("tab-" + cual).classList.add("active");
+
+        FORMS.forEach(f => document.getElementById(f).style.display = "none");
+        document.getElementById(cual + "-form").style.display = "flex";
+
+        
+        ["login-error","reg-error","reg-ok","admin-error"].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = "";
+        });
+      }
+
+      function bloquearBtn(id, bloquear) {
+        const btn = document.getElementById(id);
+        btn.disabled = bloquear;
+        btn.style.opacity = bloquear ? "0.65" : "1";
+      }
+
+      async function entrar() {
+        const uname = document.getElementById("login-user").value.trim();
+        const pass = document.getElementById("login-pass").value;
+        const err = document.getElementById("login-error");
+        err.textContent = "";
+
+        if (!uname || !pass) { err.textContent = "Faltan datos"; return; }
+
+        bloquearBtn("btn-login", true);
+        try {
+          const resp = await fetch("/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: uname, password: pass })
+          });
+          const info = await resp.json();
+          if (info.ok) {
+            localStorage.setItem("chat_user",  uname);
+            localStorage.setItem("chat_admin", info.isAdmin ? "1" : "0");
+            window.location.href = "/chat.html";
+          } else {
+            err.textContent = info.error;
+          }
+        } catch (e) {
+          console.error("fallo login", e);
+          err.textContent = "No se pudo conectar";
+        }
+        bloquearBtn("btn-login", false);
+      }
+
+      async function registrarse() {
+        const uname = document.getElementById("reg-user").value.trim();
+        const pass = document.getElementById("reg-pass").value;
+        const pass2 = document.getElementById("reg-pass2").value;
+        const err = document.getElementById("reg-error");
+        const ok = document.getElementById("reg-ok");
+        err.textContent = "";
+        ok.textContent  = "";
+
+        if (!uname || !pass || !pass2) { err.textContent = "Completa todo los campos"; return; }
+        if (pass !== pass2) { err.textContent = "Las contraseñas no coinciden"; return; }
+        const patronUsuario = /^[a-zA-Z0-9_.]{3,20}$/;
+        if (!patronUsuario.test(uname)) {
+            err.textContent = "Usuario: 3-20 caracteres, solo letras, números, '.' y '_'";
+            return;
+        }
+
+        bloquearBtn("btn-register", true);
+        try {
+          const resp = await fetch("/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: uname, password: pass })
+          });
+          const info = await resp.json();
+          if (info.ok) {
+            ok.textContent = "Registro Exitoso. Ahora inicia sesión.";
+            setTimeout(() => cambiarTab("login"), 1500);
+          } else {
+            err.textContent = info.error;
+          }
+        } catch (e) {
+          err.textContent = "Error de red";
+        }
+        bloquearBtn("btn-register", false);
+      }
+
+      async function entrarAdmin() {
+        const uname = document.getElementById("admin-user").value.trim();
+        const pass = document.getElementById("admin-pass").value;
+        const clave = document.getElementById("admin-secret").value;
+        const err = document.getElementById("admin-error");
+        err.textContent = "";
+
+        if (!uname || !pass || !clave) { err.textContent = "Completa todo"; return; }
+
+        bloquearBtn("btn-admin", true);
+        try {
+          const resp = await fetch("/admin-login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: uname, password: pass, secret: clave })
+          });
+          const info = await resp.json();
+          if (info.ok) {
+            localStorage.setItem("chat_user",  uname);
+            localStorage.setItem("chat_admin", "1");
+            window.location.href = "/admin";
+          } else {
+            err.textContent = info.error;
+          }
+        } catch (e) {
+          err.textContent = "No se pudo conectar";
+        }
+        bloquearBtn("btn-admin", false);
+      }
+
+      function mostrarSetupAdmin() {
+        document.getElementById("admin-form").style.display = "none";
+        document.getElementById("setup-admin-form").style.display = "flex";
+      }
+      function ocultarSetupAdmin() {
+        document.getElementById("setup-admin-form").style.display = "none";
+        document.getElementById("admin-form").style.display = "flex";
+      }
+
+      async function configurarPrimerAdmin() {
+        const uname = document.getElementById("setup-user").value.trim();
+        const clave = document.getElementById("setup-secret").value;
+        const err = document.getElementById("setup-error");
+        const ok  = document.getElementById("setup-ok");
+        err.textContent = ""; ok.textContent = "";
+
+        if (!uname || !clave) { err.textContent = "Completa todo"; return; }
+
+        try {
+          const resp = await fetch("/setup-primer-admin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: uname, secret: clave })
+          });
+          const info = await resp.json();
+          if (info.ok) {
+            ok.textContent = "¡Listo! Ya eres admin, inicia sesión desde la pestaña Admin.";
+            setTimeout(() => { ocultarSetupAdmin(); }, 2000);
+          } else {
+            err.textContent = info.error;
+          }
+        } catch (e) {
+          err.textContent = "No se pudo conectar";
+        }
+      }
+    </script>
+  </body>
+</html>

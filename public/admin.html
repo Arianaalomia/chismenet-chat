@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ChismeNet — Admin</title>
+  <link rel="icon" type="image/svg+xml" href="icon.svg"/>
+  <link rel="stylesheet" href="style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  
+</head>
+<body class="admin-page">
+<div id="modal-confirmar-accion" class="modal-overlay" style="display:none">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 id="titulo-modal-accion">Confirmar</h3>
+      <button onclick="cerrarModalAccion()" class="btn-icon">✕</button>
+    </div>
+    <p id="texto-modal-accion" style="font-size:13.5px;color:var(--text-2)"></p>
+    <div class="modal-actions">
+      <button onclick="cerrarModalAccion()" class="btn-secondary">Cancelar</button>
+      <button id="btn-confirmar-accion" onclick="ejecutarAccionPendiente()" class="btn-primary-sm">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<a href="/chat.html" class="back-btn">← Volver al chat</a>
+
+<div class="admin-header">
+  <h1>Panel de Administración</h1>
+  <span id="admin-user-label"></span>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card"><div class="stat-val" id="s-users">—</div><div class="stat-label">Usuarios registrados</div></div>
+  <div class="stat-card"><div class="stat-val" id="s-msgs">—</div><div class="stat-label">Mensajes enviados</div></div>
+  <div class="stat-card"><div class="stat-val" id="s-rooms">—</div><div class="stat-label">Salas activas</div></div>
+  <div class="stat-card"><div class="stat-val" id="s-online">—</div><div class="stat-label">En línea ahora</div></div>
+</div>
+
+<div class="admin-section">
+  <h2>Usuarios</h2>
+  <table>
+    <thead>
+      <tr><th>Usuario</th><th>Rol</th><th>Registrado</th><th>Estado</th><th>Acciones</th></tr>
+    </thead>
+    <tbody id="users-table"></tbody>
+  </table>
+</div>
+
+<div class="admin-section">
+  <h2>Salas</h2>
+  <table>
+    <thead>
+      <tr><th>Sala</th><th>Tipo</th><th>Creada por</th><th>Acciones</th></tr>
+    </thead>
+    <tbody id="rooms-table"></tbody>
+  </table>
+</div>
+
+<script>
+  const adminUser = localStorage.getItem("chat_user");
+  const esAdmin = localStorage.getItem("chat_admin") === "1";
+
+  if (!adminUser || !esAdmin) {
+    alert("Acceso denegado");
+    window.location.href = "/";
+  }
+
+  document.getElementById("admin-user-label").textContent = "Sesión: " + adminUser;
+
+  async function cargarDatos() {
+    let resp;
+    try {
+      resp = await fetch("/admin/stats", { headers: { "x-admin-user": adminUser } });
+    } catch (e) {
+      console.error("no se pudo conectar al server", e);
+      return;
+    }
+
+    if (!resp.ok) {
+      alert("Sesión expirada o sin permisos");
+      window.location.href = "/";
+      return;
+    }
+
+    const data = await resp.json();
+
+    // actualizar tarjetas
+    document.getElementById("s-users").textContent = data.totalUsers;
+    document.getElementById("s-msgs").textContent = data.totalMessages;
+    document.getElementById("s-rooms").textContent = data.totalRooms;
+    document.getElementById("s-online").textContent = data.onlineNow;
+
+    // tabla usuarios
+    let htmlUsers = "";
+    for (const u of data.users) {
+      const fecha = u.created_at ? u.created_at.split("T")[0] : "—";
+      const online = data.onlineUsers.includes(u.username);
+      const estadoBadge = online
+        ? '<span class="online-pill">En línea</span>'
+        : '<span style="color:var(--text-3)">Offline</span>';
+    
+      const esUnoMismo = u.username === adminUser;
+      const btns = !esUnoMismo ? `
+        <button class="btn-table btn-del" onclick="eliminarUser('${u.username}')">Eliminar</button>
+       ${u.is_admin
+        ? `<button class="btn-table btn-quitar-admin" onclick="quitarAdmin('${u.username}')">Quitar Admin</button>`
+        : `<button class="btn-table btn-promo" onclick="hacerAdmin('${u.username}')">Hacer Admin</button>`}
+      ` : `<span style="color:var(--text-3);font-size:12px">— Tu cuenta —</span>`;
+
+      htmlUsers += `
+        <tr>
+          <td><strong>${u.username}</strong></td>
+          <td>${u.is_admin ? '<span class="badge-admin">Admin</span>' : "Usuario"}</td>
+          <td>${fecha}</td>
+          <td>${estadoBadge}</td>
+          <td>${btns ? `<div style="display:flex;gap:6px">${btns}</div>` : "—"}</td>
+        </tr>`;
+    }
+    document.getElementById("users-table").innerHTML = htmlUsers;
+
+    // tabla salas
+    let htmlSalas = "";
+    for (const s of data.rooms) {
+      const tipo = s.is_default ? "Predeterminada" : "Personalizada";
+      const creadoPor = s.created_by || "Sistema";
+     
+      const btnBorrar = !s.is_default
+        ? `<button class="btn-table btn-del" onclick="eliminarSala('${s.id}')">Eliminar</button>`
+        : "—";
+
+      htmlSalas += `
+        <tr>
+          <td>${s.icon} ${s.name}</td>
+          <td>${tipo}</td>
+          <td>${creadoPor}</td>
+          <td>${btnBorrar}</td>
+        </tr>`;
+    }
+    document.getElementById("rooms-table").innerHTML = htmlSalas;
+  }
+
+  let accionPendiente = null;
+
+  function abrirModalAccion(titulo, texto, accion, esPeligrosa = false) {
+    document.getElementById("titulo-modal-accion").textContent = titulo;
+    document.getElementById("texto-modal-accion").innerHTML = texto;
+    accionPendiente = accion;
+
+    const btn = document.getElementById("btn-confirmar-accion");
+    btn.style.background = esPeligrosa ? "#dc2626" : "";
+    btn.textContent = esPeligrosa ? "Eliminar" : "Confirmar";
+
+    document.getElementById("modal-confirmar-accion").style.display = "flex";
+  }
+
+  function cerrarModalAccion() {
+    document.getElementById("modal-confirmar-accion").style.display = "none";
+    accionPendiente = null;
+  }
+
+  async function ejecutarAccionPendiente() {
+    if (accionPendiente) await accionPendiente();
+    cerrarModalAccion();
+  }
+
+  function hacerAdmin(uname) {
+  abrirModalAccion(
+    "Dar permisos de Admin",
+    `¿Seguro que quieres darle permisos de administrador a <strong>${uname}</strong>? Podrá eliminar usuarios y salas.`,
+    async () => {
+      const r = await fetch(`/admin/promote/${uname}`, { method: "POST", headers: { "x-admin-user": adminUser } });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); alert(d.error || "No se pudo dar admin"); return; }
+      cargarDatos();
+    }
+  );
+}
+
+  function quitarAdmin(uname) {
+  abrirModalAccion(
+    "Quitar permisos de Admin",
+    `¿Seguro que quieres quitarle los permisos de administrador a <strong>${uname}</strong>?`,
+    async () => {
+      const r = await fetch(`/admin/demote/${uname}`, { method: "POST", headers: { "x-admin-user": adminUser } });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); alert(d.error || "No se pudo quitar admin"); return; }
+      cargarDatos();
+    },
+    true
+  );
+}
+
+  function eliminarUser(uname) {
+  abrirModalAccion(
+    "Eliminar usuario",
+    `¿Seguro que quieres eliminar a <strong>${uname}</strong>? Esta acción no se puede deshacer.`,
+    async () => {
+      const r = await fetch(`/admin/users/${uname}`, { method: "DELETE", headers: { "x-admin-user": adminUser } });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); alert(d.error || "No se pudo eliminar"); return; }
+      cargarDatos();
+    },
+    true
+  );
+}
+
+  function eliminarSala(id) {
+  abrirModalAccion(
+    "Eliminar sala",
+    `¿Eliminar esta sala y todos sus mensajes? Esta acción no se puede deshacer.`,
+    async () => {
+      try {
+        const r = await fetch(`/admin/rooms/${id}`, { method: "DELETE", headers: { "x-admin-user": adminUser } });
+        if (!r.ok) { const d = await r.json().catch(() => ({})); alert(d.error || "No se pudo eliminar la sala"); return; }
+        cargarDatos();
+      } catch (e) {
+        alert("Error de conexión con el servidor");
+      }
+    },
+    true
+  );
+}
+
+
+  cargarDatos();
+  setInterval(cargarDatos, 15000);
+</script>
+</body>
+</html>

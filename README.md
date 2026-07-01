@@ -10,14 +10,8 @@ Aplicación de chat en tiempo real con salas grupales, mensajes privados, reacci
 
 - [Descripción](#-descripción)
 - [Características](#-características)
-- [Tecnologías](#-tecnologías)
-- [Arquitectura](#-arquitectura)
 - [Instalación local](#-instalación-local)
 - [Estructura del proyecto](#-estructura-del-proyecto)
-- [Seguridad implementada](#-seguridad-implementada)
-- [Despliegue](#-despliegue)
-- [Autores](#-autores)
-
 ---
 
 ## Descripción
@@ -47,32 +41,6 @@ Aplicación de chat en tiempo real con salas grupales, mensajes privados, reacci
 - Crear y eliminar salas personalizadas
 - Estadísticas en vivo (usuarios registrados, mensajes enviados, salas activas, conectados)
 
-## Tecnologías
-
-| Categoría | Tecnología |
-|---|---|
-| Backend | Node.js, Express |
-| Tiempo real | Socket.io |
-| Base de datos | SQLite (`better-sqlite3`) |
-| Autenticación | `bcryptjs` (hash de contraseñas) |
-| Identificadores | `uuid` |
-| Frontend | HTML, CSS y JavaScript vanilla |
-
-## Arquitectura
-
-Arquitectura cliente-servidor con comunicación dual (HTTP/REST + WebSockets):
-
-```
-Cliente (navegador)
-   │  HTTP/REST (login, registro, perfil, admin)
-   │  WebSocket (mensajes, escritura, reacciones, presencia)
-   ▼
-Servidor (Node.js + Express + Socket.io)
-   │  Middleware de autenticación (header x-admin-user para rutas admin)
-   │  bcryptjs para contraseñas
-   ▼
-Base de datos (SQLite / better-sqlite3)
-   users · rooms · messages · reactions
 ```
 
 ## Instalación local
@@ -108,22 +76,4 @@ chismenet-chat/
 └── chat.db                # Base de datos SQLite (generada al ejecutar, no versionada)
 ```
 
-## Seguridad implementada
-
-- Contraseñas hasheadas con `bcryptjs` (nunca en texto plano)
-- Bloqueo temporal tras varios intentos fallidos de login (normal y de administrador)
-- Validación de formato de nombre de usuario (`3-20 caracteres, solo letras, números, '.' y '_'`) tanto en cliente como en servidor
-- Validación estricta del avatar en el servidor: debe ser un data URI de imagen en base64 válido, previniendo inyección de HTML/JS (XSS almacenado)
-- Protección contra quedarse sin ningún administrador en el sistema (no se puede eliminar ni degradar al último admin)
-- Verificación de existencia de usuario antes de promover/degradar
-- Mensajes de error genéricos en login normal para evitar enumeración de usuarios
-
-## Despliegue
-
-Desplegado en **Render** (plan gratuito), configurado con:
-
-| Campo | Valor |
-|---|---|
-| Build Command | `npm install` |
-| Start Command | `node server.js` |
 | Variables de entorno | Ninguna requerida (usa `process.env.PORT` que Render inyecta automáticamente) |

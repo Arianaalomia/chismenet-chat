@@ -75,5 +75,3 @@ chismenet-chat/
 ├── .gitignore             # Excluye node_modules/, chat.db, .env
 └── chat.db                # Base de datos SQLite (generada al ejecutar, no versionada)
 ```
-
-| Variables de entorno | Ninguna requerida (usa `process.env.PORT` que Render inyecta automáticamente) |

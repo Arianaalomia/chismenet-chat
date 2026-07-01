@@ -1,6 +1,6 @@
 # ChismeNet
 
-Aplicación de chat en tiempo real con salas grupales, mensajes privados, reacciones con emoji y panel de administración, construida como proyecto académico para la asignatura de **Aplicaciones Distribuidas**.
+Aplicación de chat en tiempo real con salas grupales, mensajes privados, reacciones con emoji y panel de administración.
 
 **Demo en vivo:** [chismenet.onrender.com](https://chismenet.onrender.com/chat.html)
 
